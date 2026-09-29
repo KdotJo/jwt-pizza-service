@@ -2,6 +2,7 @@ const request = require('supertest');
 const app = require('../service');
 const { randomName, createAdminUser, registerUser, login } = require('../testUtils.js');
 
+// Longer timeout when debugging in VS Code
 if (process.env.VSCODE_INSPECTOR_OPTIONS) {
   jest.setTimeout(60 * 1000 * 5); // 5 minutes
 }
@@ -13,6 +14,7 @@ let menuItem;
 let franchise;
 let store;
 
+// Set up admin, diner, menu item, franchise and store
 beforeAll(async () => {
   const admin = await createAdminUser();
   adminToken = await login(admin);
@@ -38,14 +40,17 @@ beforeAll(async () => {
   store = storeRes.body;
 });
 
+// Undo the fetch mock after each test
 afterEach(() => {
   jest.restoreAllMocks();
 });
 
+// Fake the Pizza Factory so tests never call the real one
 function mockFactory(ok, body) {
   return jest.spyOn(global, 'fetch').mockResolvedValue({ ok, json: async () => body });
 }
 
+// Order body for one pizza
 function orderRequest() {
   return { franchiseId: franchise.id, storeId: store.id, items: [{ menuId: menuItem.id, description: menuItem.title, price: menuItem.price }] };
 }

@@ -2,6 +2,7 @@ const request = require('supertest');
 const app = require('../service');
 const { randomName, createAdminUser, registerUser, login } = require('../testUtils.js');
 
+// Longer timeout when debugging in VS Code
 if (process.env.VSCODE_INSPECTOR_OPTIONS) {
   jest.setTimeout(60 * 1000 * 5); // 5 minutes
 }
@@ -11,6 +12,7 @@ let franchisee;
 let franchiseeToken;
 let dinerToken;
 
+// One admin, one franchisee, one diner for the file
 beforeAll(async () => {
   const admin = await createAdminUser();
   adminToken = await login(admin);
@@ -18,6 +20,7 @@ beforeAll(async () => {
   ({ token: dinerToken } = await registerUser());
 });
 
+// Admin creates a franchise owned by the franchisee
 async function createFranchise() {
   const res = await request(app)
     .post('/api/franchise')
@@ -27,6 +30,7 @@ async function createFranchise() {
   return res.body;
 }
 
+// Create a store (admin token by default)
 async function createStore(franchiseId, token = adminToken) {
   return request(app).post(`/api/franchise/${franchiseId}/store`).set('Authorization', `Bearer ${token}`).send({ name: randomName() });
 }
@@ -92,6 +96,7 @@ describe('list franchises', () => {
     expect(res.body.franchises[0].stores[0]).toMatchObject({ totalRevenue: 0 });
   });
 
+  // Checks the paging fix
   test('paging reports more', async () => {
     const prefix = randomName();
     for (let i = 0; i < 3; i++) {

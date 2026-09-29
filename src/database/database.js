@@ -79,7 +79,7 @@ class DB {
     const connection = await this.getConnection();
     try {
       const params = [];
-      const values = [];
+      const values = []; // Bound values, not pasted into SQL (stops injection)
       if (password) {
         const hashedPassword = await bcrypt.hash(password, 10);
         params.push('password=?');
@@ -95,8 +95,9 @@ class DB {
       }
       if (params.length > 0) {
         const query = `UPDATE user SET ${params.join(', ')} WHERE id=?`;
-        await this.query(connection, query, [...values, userId]);
+        await this.query(connection, query, [...values, userId]); // Parameterized update
       }
+      // Look up email by id so updates without an email still work
       const [current] = await this.query(connection, `SELECT email FROM user WHERE id=?`, [userId]);
       return this.getUser(current?.email ?? null);
     } finally {
@@ -211,6 +212,7 @@ class DB {
   async getFranchises(authUser, page = 0, limit = 10, nameFilter = '*') {
     const connection = await this.getConnection();
 
+    // Force page/limit to numbers so query strings can't break the SQL
     page = Math.max(0, parseInt(page) || 0);
     limit = Math.max(1, parseInt(limit) || 10);
     const offset = page * limit;

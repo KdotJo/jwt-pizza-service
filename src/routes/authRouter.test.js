@@ -2,6 +2,7 @@ const request = require('supertest');
 const app = require('../service');
 const { randomName } = require('../testUtils.js');
 
+// Longer timeout when debugging in VS Code
 if (process.env.VSCODE_INSPECTOR_OPTIONS) {
   jest.setTimeout(60 * 1000 * 5); // 5 minutes
 }
@@ -10,10 +11,12 @@ const testUser = { name: 'pizza diner', email: 'reg@test.com', password: 'a' };
 let testUserAuthToken;
 let testUserId;
 
+// Checks token looks like header.payload.signature
 function expectValidJwt(potentialJwt) {
   expect(potentialJwt).toMatch(/^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/);
 }
 
+// Register one test user for the whole file
 beforeAll(async () => {
   testUser.email = randomName() + '@test.com';
   const registerRes = await request(app).post('/api/auth').send(testUser);
@@ -77,7 +80,7 @@ test('logout', async () => {
   expect(logoutRes.status).toBe(200);
   expect(logoutRes.body.message).toBe('logout successful');
 
-  // The token is no longer accepted after logout.
+  // Token rejected after logout
   const meRes = await request(app).get('/api/user/me').set('Authorization', `Bearer ${token}`);
   expect(meRes.status).toBe(401);
 });

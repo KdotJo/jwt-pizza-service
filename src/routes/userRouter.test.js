@@ -2,6 +2,7 @@ const request = require('supertest');
 const app = require('../service');
 const { randomName, createAdminUser, registerUser, login } = require('../testUtils.js');
 
+// Longer timeout when debugging in VS Code
 if (process.env.VSCODE_INSPECTOR_OPTIONS) {
   jest.setTimeout(60 * 1000 * 5); // 5 minutes
 }
@@ -9,6 +10,7 @@ if (process.env.VSCODE_INSPECTOR_OPTIONS) {
 let diner;
 let dinerToken;
 
+// Fresh diner for every test
 beforeEach(async () => {
   ({ user: diner, token: dinerToken } = await registerUser());
 });
@@ -32,7 +34,7 @@ test('update self', async () => {
   expect(res.body.user).toMatchObject({ id: diner.id, name: newName, email: newEmail });
   expect(res.body.token).toMatch(/^[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*\.[a-zA-Z0-9\-_]*$/);
 
-  // The new password works.
+  // New password works
   const token = await login({ email: newEmail, password: 'newpass' });
   expect(token).toBeDefined();
 });
@@ -44,6 +46,7 @@ test('update only name keeps email', async () => {
   expect(res.body.user).toMatchObject({ id: diner.id, name: newName, email: diner.email });
 });
 
+// Checks the SQL injection fix
 test('update with name containing a quote is stored literally', async () => {
   const newName = `o'${randomName()}`;
   const res = await request(app).put(`/api/user/${diner.id}`).set('Authorization', `Bearer ${dinerToken}`).send({ name: newName });
