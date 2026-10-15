@@ -88,12 +88,6 @@ test('delete user is not implemented', async () => {
   expect(res.body.message).toBe('not implemented');
 });
 
-test('list users is not implemented', async () => {
-  const res = await request(app).get('/api/user').set('Authorization', `Bearer ${dinerToken}`);
-  expect(res.status).toBe(200);
-  expect(res.body).toEqual({ message: 'not implemented', users: [], more: false });
-});
-
 // List users (admin only)
 describe('list users', () => {
   test('is documented', async () => {
@@ -112,5 +106,12 @@ describe('list users', () => {
   test('rejects a bad token', async () => {
     const res = await request(app).get('/api/user').set('Authorization', 'Bearer not.a.token');
     expect(res.status).toBe(401);
+  });
+
+  test('is forbidden for a non-admin', async () => {
+    const res = await request(app).get('/api/user').set('Authorization', `Bearer ${dinerToken}`);
+    expect(res.status).toBe(403);
+    expect(res.body.message).toBe('unable to list users');
+    expect(res.body.users).toBeUndefined();
   });
 });
