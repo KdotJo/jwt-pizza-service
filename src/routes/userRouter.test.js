@@ -298,5 +298,21 @@ describe('delete user', () => {
       const after = await request(app).get(`/api/franchise/${diner.id}`).set('Authorization', `Bearer ${adminToken}`);
       expect(after.body).toEqual([]);
     });
+
+    test('unknown user is 404', async () => {
+      const res = await deleteUser(999999999);
+      expect(res.status).toBe(404);
+      expect(res.body.message).toBe('unknown user');
+    });
+
+    test('non-numeric id is 404', async () => {
+      const res = await deleteUser('abc');
+      expect(res.status).toBe(404);
+    });
+
+    test('deleting twice is 404 the second time', async () => {
+      expect((await deleteUser(diner.id)).status).toBe(200);
+      expect((await deleteUser(diner.id)).status).toBe(404);
+    });
   });
 });
