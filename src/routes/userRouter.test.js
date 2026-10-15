@@ -93,3 +93,13 @@ test('list users is not implemented', async () => {
   expect(res.status).toBe(200);
   expect(res.body).toEqual({ message: 'not implemented', users: [], more: false });
 });
+
+// List users (admin only)
+describe('list users', () => {
+  test('is documented', async () => {
+    const res = await request(app).get('/api/docs');
+    const doc = res.body.endpoints.find((e) => e.method === 'GET' && e.path === '/api/user?page=1&limit=10&name=*');
+    expect(doc).toMatchObject({ requiresAuth: true, description: expect.any(String), example: expect.stringContaining('/api/user') });
+    expect(doc.response).toEqual({ users: [{ id: expect.any(Number), name: expect.any(String), email: expect.any(String), roles: [{ role: expect.any(String) }] }], more: expect.any(Boolean) });
+  });
+});
