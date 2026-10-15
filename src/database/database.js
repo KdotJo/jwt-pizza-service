@@ -107,9 +107,10 @@ class DB {
 
   // Page of users (1-based) whose name matches nameFilter, where '*' is a wildcard
   async getUsers(page = 1, limit = 10, nameFilter = '*') {
-    // Force page/limit to numbers so query strings can't break the SQL
-    page = Math.max(1, parseInt(page) || 1);
-    limit = Math.max(1, parseInt(limit) || 10);
+    // Force page/limit to numbers so query strings can't break the SQL.
+    // Anything that isn't a positive number falls back to the default
+    page = parseInt(page) > 0 ? parseInt(page) : 1;
+    limit = parseInt(limit) > 0 ? parseInt(limit) : 10;
     const offset = (page - 1) * limit;
     nameFilter = String(nameFilter).replace(/\*/g, '%');
 
