@@ -114,4 +114,31 @@ describe('list users', () => {
     expect(res.body.message).toBe('unable to list users');
     expect(res.body.users).toBeUndefined();
   });
+
+  describe('as admin', () => {
+    let adminToken;
+    beforeAll(async () => {
+      adminToken = await login(await createAdminUser());
+    });
+
+    // GET /api/user with the admin token and the given query
+    function listUsers(query = '') {
+      return request(app).get(`/api/user${query}`).set('Authorization', `Bearer ${adminToken}`);
+    }
+
+    test('returns users with roles and no passwords', async () => {
+      const res = await listUsers(`?name=${diner.name}`);
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ users: [{ id: diner.id, name: diner.name, email: diner.email, roles: [{ role: 'diner' }] }], more: false });
+    });
+
+    test('never includes passwords', async () => {
+      const res = await listUsers('?limit=50');
+      expect(res.status).toBe(200);
+      expect(res.body.users.length).toBeGreaterThan(0);
+      for (const user of res.body.users) {
+        expect(Object.keys(user).sort()).toEqual(['email', 'id', 'name', 'roles']);
+      }
+    });
+  });
 });
