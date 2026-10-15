@@ -112,7 +112,8 @@ class DB {
     page = parseInt(page) > 0 ? parseInt(page) : 1;
     limit = parseInt(limit) > 0 ? parseInt(limit) : 10;
     const offset = (page - 1) * limit;
-    nameFilter = String(nameFilter).replace(/\*/g, '%');
+    // Escape LIKE's own wildcards so only '*' acts as one
+    nameFilter = String(nameFilter).replace(/[\\%_]/g, '\\$&').replace(/\*/g, '%');
 
     const connection = await this.getConnection();
     try {
