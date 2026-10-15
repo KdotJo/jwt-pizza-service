@@ -192,5 +192,47 @@ describe('list users', () => {
         expect(res.body.users.map((u) => u.id)).toEqual(ids);
       });
     });
+
+    describe('name filter', () => {
+      let prefix;
+      const byName = {};
+      beforeAll(async () => {
+        prefix = randomName();
+        for (const suffix of ['pizza', 'pizzaz', 'pasta', '_x', 'ax', '%y', 'by']) {
+          const res = await request(app).post('/api/auth').send({ name: `${prefix}${suffix}`, email: `${randomName()}@test.com`, password: 'a' });
+          byName[suffix] = res.body.user.id;
+        }
+      });
+
+      // Names of the matching users, without the shared prefix
+      async function matching(filter) {
+        const res = await listUsers(`?limit=50&name=${encodeURIComponent(filter)}`);
+        expect(res.status).toBe(200);
+        return res.body.users.map((u) => u.name.slice(prefix.length)).sort();
+      }
+
+      test('exact name', async () => {
+        expect(await matching(`${prefix}pizza`)).toEqual(['pizza']);
+      });
+
+      test('trailing wildcard', async () => {
+        expect(await matching(`${prefix}pizza*`)).toEqual(['pizza', 'pizzaz']);
+      });
+
+      test('leading and middle wildcards', async () => {
+        expect(await matching(`*${prefix}p*a`)).toEqual(['pasta', 'pizza']);
+      });
+
+      test('no match is an empty list', async () => {
+        const res = await listUsers(`?name=${randomName()}`);
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual({ users: [], more: false });
+      });
+
+      test('underscore and percent are literal, not SQL wildcards', async () => {
+        expect(await matching(`${prefix}_x`)).toEqual(['_x']);
+        expect(await matching(`${prefix}%y`)).toEqual(['%y']);
+      });
+    });
   });
 });
