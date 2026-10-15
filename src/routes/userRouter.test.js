@@ -236,3 +236,13 @@ describe('list users', () => {
     });
   });
 });
+
+// Delete user (admin only)
+describe('delete user', () => {
+  test('is documented', async () => {
+    const res = await request(app).get('/api/docs');
+    const doc = res.body.endpoints.find((e) => e.method === 'DELETE' && e.path === '/api/user/:userId');
+    expect(doc).toMatchObject({ requiresAuth: true, description: expect.any(String), example: expect.stringContaining('-X DELETE') });
+    expect(doc.response).toEqual({ message: expect.any(String) });
+  });
+});
