@@ -257,4 +257,46 @@ describe('delete user', () => {
     expect(res.status).toBe(403);
     expect(await login(diner)).toBeDefined();
   });
+
+  describe('as admin', () => {
+    let adminToken;
+    beforeAll(async () => {
+      adminToken = await login(await createAdminUser());
+    });
+
+    function deleteUser(id) {
+      return request(app).delete(`/api/user/${id}`).set('Authorization', `Bearer ${adminToken}`);
+    }
+
+    test('deletes the user', async () => {
+      const res = await deleteUser(diner.id);
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ message: 'user deleted' });
+
+      // Gone from the list
+      const list = await request(app).get(`/api/user?name=${diner.name}`).set('Authorization', `Bearer ${adminToken}`);
+      expect(list.body).toEqual({ users: [], more: false });
+
+      // Can't log in any more
+      const loginRes = await request(app).put('/api/auth').send({ email: diner.email, password: diner.password });
+      expect(loginRes.status).toBe(404);
+    });
+
+    test("deleted user's existing token stops working", async () => {
+      await deleteUser(diner.id);
+      const res = await request(app).get('/api/user/me').set('Authorization', `Bearer ${dinerToken}`);
+      expect(res.status).toBe(401);
+    });
+
+    test('deletes a franchisee and their roles', async () => {
+      const franchise = { name: randomName(), admins: [{ email: diner.email }] };
+      const created = await request(app).post('/api/franchise').set('Authorization', `Bearer ${adminToken}`).send(franchise);
+      expect(created.status).toBe(200);
+
+      const res = await deleteUser(diner.id);
+      expect(res.status).toBe(200);
+      const after = await request(app).get(`/api/franchise/${diner.id}`).set('Authorization', `Bearer ${adminToken}`);
+      expect(after.body).toEqual([]);
+    });
+  });
 });
