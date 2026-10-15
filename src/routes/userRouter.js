@@ -76,7 +76,8 @@ userRouter.get(
     if (!req.user.isRole(Role.Admin)) {
       throw new StatusCodeError('unable to list users', 403);
     }
-    res.json({ message: 'not implemented', users: [], more: false });
+    const [users, more] = await DB.getUsers(req.query.page, req.query.limit, req.query.name);
+    res.json({ users, more });
   })
 );
 

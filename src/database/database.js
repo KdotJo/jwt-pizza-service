@@ -105,6 +105,32 @@ class DB {
     }
   }
 
+  // Page of users (1-based) whose name matches nameFilter, where '*' is a wildcard
+  async getUsers(page = 1, limit = 10, nameFilter = '*') {
+    // Force page/limit to numbers so query strings can't break the SQL
+    page = Math.max(1, parseInt(page) || 1);
+    limit = Math.max(1, parseInt(limit) || 10);
+    const offset = (page - 1) * limit;
+    nameFilter = String(nameFilter).replace(/\*/g, '%');
+
+    const connection = await this.getConnection();
+    try {
+      // One extra row tells us whether another page exists
+      let users = await this.query(connection, `SELECT id, name, email FROM user WHERE name LIKE ? ORDER BY id LIMIT ${limit + 1} OFFSET ${offset}`, [nameFilter]);
+      const more = users.length > limit;
+      users = users.slice(0, limit);
+
+      // All roles for the page in one query, one placeholder per user id
+      const roleResult = users.length ? await this.query(connection, `SELECT userId, role, objectId FROM userRole WHERE userId IN (${users.map(() => '?').join(',')})`, users.map((u) => u.id)) : [];
+      for (const user of users) {
+        user.roles = roleResult.filter((r) => r.userId === user.id).map((r) => ({ objectId: r.objectId || undefined, role: r.role }));
+      }
+      return [users, more];
+    } finally {
+      connection.end();
+    }
+  }
+
   async loginUser(userId, token) {
     token = this.getTokenSignature(token);
     const connection = await this.getConnection();
