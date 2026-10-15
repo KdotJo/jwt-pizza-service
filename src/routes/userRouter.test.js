@@ -140,5 +140,57 @@ describe('list users', () => {
         expect(Object.keys(user).sort()).toEqual(['email', 'id', 'name', 'roles']);
       }
     });
+
+    describe('paging', () => {
+      // Three users that share a unique name prefix, so other test data can't interfere
+      let prefix;
+      let ids;
+      beforeAll(async () => {
+        prefix = randomName();
+        ids = [];
+        for (let i = 1; i <= 3; i++) {
+          const res = await request(app).post('/api/auth').send({ name: `${prefix} ${i}`, email: `${randomName()}@test.com`, password: 'a' });
+          ids.push(res.body.user.id);
+        }
+      });
+
+      test('first page has more', async () => {
+        const res = await listUsers(`?page=1&limit=2&name=${prefix}*`);
+        expect(res.status).toBe(200);
+        expect(res.body.users.map((u) => u.id)).toEqual(ids.slice(0, 2));
+        expect(res.body.more).toBe(true);
+      });
+
+      test('last page has the rest and no more', async () => {
+        const res = await listUsers(`?page=2&limit=2&name=${prefix}*`);
+        expect(res.body.users.map((u) => u.id)).toEqual(ids.slice(2));
+        expect(res.body.more).toBe(false);
+      });
+
+      test('page past the end is empty', async () => {
+        const res = await listUsers(`?page=3&limit=2&name=${prefix}*`);
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual({ users: [], more: false });
+      });
+
+      test('exact page size has no more', async () => {
+        const res = await listUsers(`?page=1&limit=3&name=${prefix}*`);
+        expect(res.body.users).toHaveLength(3);
+        expect(res.body.more).toBe(false);
+      });
+
+      test('defaults to page 1 with 10 users', async () => {
+        const res = await listUsers();
+        expect(res.status).toBe(200);
+        expect(res.body.users.length).toBeLessThanOrEqual(10);
+        expect(res.body).toEqual((await listUsers('?page=1&limit=10&name=*')).body);
+      });
+
+      test('bad page and limit fall back to defaults', async () => {
+        const res = await listUsers(`?page=abc&limit=-5&name=${prefix}*`);
+        expect(res.status).toBe(200);
+        expect(res.body.users.map((u) => u.id)).toEqual(ids);
+      });
+    });
   });
 });
