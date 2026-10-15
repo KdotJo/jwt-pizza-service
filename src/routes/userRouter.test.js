@@ -102,4 +102,15 @@ describe('list users', () => {
     expect(doc).toMatchObject({ requiresAuth: true, description: expect.any(String), example: expect.stringContaining('/api/user') });
     expect(doc.response).toEqual({ users: [{ id: expect.any(Number), name: expect.any(String), email: expect.any(String), roles: [{ role: expect.any(String) }] }], more: expect.any(Boolean) });
   });
+
+  test('requires a token', async () => {
+    const res = await request(app).get('/api/user');
+    expect(res.status).toBe(401);
+    expect(res.body.message).toBe('unauthorized');
+  });
+
+  test('rejects a bad token', async () => {
+    const res = await request(app).get('/api/user').set('Authorization', 'Bearer not.a.token');
+    expect(res.status).toBe(401);
+  });
 });
