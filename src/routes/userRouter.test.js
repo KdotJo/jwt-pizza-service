@@ -1,6 +1,7 @@
 const request = require('supertest');
 const app = require('../service');
 const { randomName, createAdminUser, registerUser, login } = require('../testUtils.js');
+const { DB } = require('../database/database.js');
 
 // Longer timeout when debugging in VS Code
 if (process.env.VSCODE_INSPECTOR_OPTIONS) {
@@ -313,6 +314,29 @@ describe('delete user', () => {
     test('deleting twice is 404 the second time', async () => {
       expect((await deleteUser(diner.id)).status).toBe(200);
       expect((await deleteUser(diner.id)).status).toBe(404);
+    });
+
+    test('a failure part way rolls the whole delete back', async () => {
+      // Fail the final user-row delete, after roles and sessions were removed
+      const realQuery = DB.query.bind(DB);
+      const spy = jest.spyOn(DB, 'query').mockImplementation((connection, sql, params) => {
+        if (sql.startsWith('DELETE FROM user ')) throw new Error('db down');
+        return realQuery(connection, sql, params);
+      });
+      try {
+        const res = await deleteUser(diner.id);
+        expect(res.status).toBe(500);
+        expect(res.body.message).toBe('unable to delete user');
+      } finally {
+        spy.mockRestore();
+      }
+
+      // Roles and the session survived
+      const me = await request(app).get('/api/user/me').set('Authorization', `Bearer ${dinerToken}`);
+      expect(me.status).toBe(200);
+      expect(me.body.roles).toEqual([{ role: 'diner' }]);
+      const list = await request(app).get(`/api/user?name=${diner.name}`).set('Authorization', `Bearer ${adminToken}`);
+      expect(list.body.users[0].roles).toEqual([{ role: 'diner' }]);
     });
   });
 });
