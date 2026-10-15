@@ -141,11 +141,14 @@ class DB {
       try {
         await this.query(connection, `DELETE FROM userRole WHERE userId=?`, [userId]);
         await this.query(connection, `DELETE FROM auth WHERE userId=?`, [userId]);
-        await this.query(connection, `DELETE FROM user WHERE id=?`, [userId]);
+        const result = await this.query(connection, `DELETE FROM user WHERE id=?`, [userId]);
+        if (result.affectedRows === 0) {
+          throw new StatusCodeError('unknown user', 404);
+        }
         await connection.commit();
-      } catch {
+      } catch (err) {
         await connection.rollback();
-        throw new StatusCodeError('unable to delete user', 500);
+        throw err instanceof StatusCodeError ? err : new StatusCodeError('unable to delete user', 500);
       }
     } finally {
       connection.end();

@@ -75,7 +75,11 @@ userRouter.delete(
     if (!req.user.isRole(Role.Admin)) {
       throw new StatusCodeError('unable to delete user', 403);
     }
-    await DB.deleteUser(Number(req.params.userId));
+    const userId = Number(req.params.userId);
+    if (!Number.isInteger(userId)) {
+      throw new StatusCodeError('unknown user', 404);
+    }
+    await DB.deleteUser(userId);
     res.json({ message: 'user deleted' });
   })
 );
