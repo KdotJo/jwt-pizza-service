@@ -82,12 +82,6 @@ test('update without token', async () => {
   expect(res.status).toBe(401);
 });
 
-test('delete user is not implemented', async () => {
-  const res = await request(app).delete(`/api/user/${diner.id}`).set('Authorization', `Bearer ${dinerToken}`);
-  expect(res.status).toBe(200);
-  expect(res.body.message).toBe('not implemented');
-});
-
 // List users (admin only)
 describe('list users', () => {
   test('is documented', async () => {
@@ -244,5 +238,23 @@ describe('delete user', () => {
     const doc = res.body.endpoints.find((e) => e.method === 'DELETE' && e.path === '/api/user/:userId');
     expect(doc).toMatchObject({ requiresAuth: true, description: expect.any(String), example: expect.stringContaining('-X DELETE') });
     expect(doc.response).toEqual({ message: expect.any(String) });
+  });
+
+  test('requires a token', async () => {
+    const res = await request(app).delete(`/api/user/${diner.id}`);
+    expect(res.status).toBe(401);
+  });
+
+  test('is forbidden for a non-admin', async () => {
+    const { user: other } = await registerUser();
+    const res = await request(app).delete(`/api/user/${other.id}`).set('Authorization', `Bearer ${dinerToken}`);
+    expect(res.status).toBe(403);
+    expect(res.body.message).toBe('unable to delete user');
+  });
+
+  test('a non-admin cannot delete themself', async () => {
+    const res = await request(app).delete(`/api/user/${diner.id}`).set('Authorization', `Bearer ${dinerToken}`);
+    expect(res.status).toBe(403);
+    expect(await login(diner)).toBeDefined();
   });
 });
