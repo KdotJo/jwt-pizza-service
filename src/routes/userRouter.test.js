@@ -111,6 +111,7 @@ describe('list users', () => {
   });
 
   describe('as admin', () => {
+    // One admin for all the list tests
     let adminToken;
     beforeAll(async () => {
       adminToken = await login(await createAdminUser());
@@ -127,6 +128,7 @@ describe('list users', () => {
       expect(res.body).toEqual({ users: [{ id: diner.id, name: diner.name, email: diner.email, roles: [{ role: 'diner' }] }], more: false });
     });
 
+    // Checks every user on a big page, not just one
     test('never includes passwords', async () => {
       const res = await listUsers('?limit=50');
       expect(res.status).toBe(200);
@@ -189,6 +191,7 @@ describe('list users', () => {
     });
 
     describe('name filter', () => {
+      // Users named <prefix><suffix>; ax and by catch _ and % acting as wildcards
       let prefix;
       const byName = {};
       beforeAll(async () => {
@@ -260,11 +263,13 @@ describe('delete user', () => {
   });
 
   describe('as admin', () => {
+    // One admin for all the delete tests
     let adminToken;
     beforeAll(async () => {
       adminToken = await login(await createAdminUser());
     });
 
+    // DELETE /api/user/:id with the admin token
     function deleteUser(id) {
       return request(app).delete(`/api/user/${id}`).set('Authorization', `Bearer ${adminToken}`);
     }
@@ -289,6 +294,7 @@ describe('delete user', () => {
       expect(res.status).toBe(401);
     });
 
+    // Franchisee role rows must go too (userRole has a foreign key to user)
     test('deletes a franchisee and their roles', async () => {
       const franchise = { name: randomName(), admins: [{ email: diner.email }] };
       const created = await request(app).post('/api/franchise').set('Authorization', `Bearer ${adminToken}`).send(franchise);
@@ -296,6 +302,7 @@ describe('delete user', () => {
 
       const res = await deleteUser(diner.id);
       expect(res.status).toBe(200);
+      // No franchises left for that user id
       const after = await request(app).get(`/api/franchise/${diner.id}`).set('Authorization', `Bearer ${adminToken}`);
       expect(after.body).toEqual([]);
     });

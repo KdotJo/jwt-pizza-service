@@ -72,9 +72,11 @@ userRouter.delete(
   '/:userId',
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
+    // Only admins can delete a user
     if (!req.user.isRole(Role.Admin)) {
       throw new StatusCodeError('unable to delete user', 403);
     }
+    // Ids like 'abc' can't match a user, so skip the DB
     const userId = Number(req.params.userId);
     if (!Number.isInteger(userId)) {
       throw new StatusCodeError('unknown user', 404);
@@ -89,9 +91,11 @@ userRouter.get(
   '/',
   authRouter.authenticateToken,
   asyncHandler(async (req, res) => {
+    // Only admins can list users
     if (!req.user.isRole(Role.Admin)) {
       throw new StatusCodeError('unable to list users', 403);
     }
+    // page, limit and name are optional; the DB applies defaults
     const [users, more] = await DB.getUsers(req.query.page, req.query.limit, req.query.name);
     res.json({ users, more });
   })

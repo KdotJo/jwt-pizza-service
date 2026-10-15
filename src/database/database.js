@@ -111,7 +111,7 @@ class DB {
     // Anything that isn't a positive number falls back to the default
     page = parseInt(page) > 0 ? parseInt(page) : 1;
     limit = parseInt(limit) > 0 ? parseInt(limit) : 10;
-    const offset = (page - 1) * limit;
+    const offset = (page - 1) * limit; // Page 1 starts at row 0
     // Escape LIKE's own wildcards so only '*' acts as one
     nameFilter = String(nameFilter).replace(/[\\%_]/g, '\\$&').replace(/\*/g, '%');
 
@@ -120,10 +120,11 @@ class DB {
       // One extra row tells us whether another page exists
       let users = await this.query(connection, `SELECT id, name, email FROM user WHERE name LIKE ? ORDER BY id LIMIT ${limit + 1} OFFSET ${offset}`, [nameFilter]);
       const more = users.length > limit;
-      users = users.slice(0, limit);
+      users = users.slice(0, limit); // Drop the extra row
 
       // All roles for the page in one query, one placeholder per user id
       const roleResult = users.length ? await this.query(connection, `SELECT userId, role, objectId FROM userRole WHERE userId IN (${users.map(() => '?').join(',')})`, users.map((u) => u.id)) : [];
+      // Same role shape as getUser
       for (const user of users) {
         user.roles = roleResult.filter((r) => r.userId === user.id).map((r) => ({ objectId: r.objectId || undefined, role: r.role }));
       }
@@ -137,17 +138,22 @@ class DB {
   async deleteUser(userId) {
     const connection = await this.getConnection();
     try {
+      // All or nothing: a failure part way leaves the user untouched
       await connection.beginTransaction();
       try {
+        // userRole has a foreign key to user, so it goes first
         await this.query(connection, `DELETE FROM userRole WHERE userId=?`, [userId]);
+        // Log the user out everywhere so old tokens stop working
         await this.query(connection, `DELETE FROM auth WHERE userId=?`, [userId]);
         const result = await this.query(connection, `DELETE FROM user WHERE id=?`, [userId]);
+        // Nothing deleted means there was no such user
         if (result.affectedRows === 0) {
           throw new StatusCodeError('unknown user', 404);
         }
         await connection.commit();
       } catch (err) {
         await connection.rollback();
+        // Keep the 404; anything else is a server error
         throw err instanceof StatusCodeError ? err : new StatusCodeError('unable to delete user', 500);
       }
     } finally {
