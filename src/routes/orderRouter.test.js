@@ -106,6 +106,14 @@ describe('orders', () => {
     expect(res.body).toEqual({ message: 'Failed to fulfill order at factory', followLinkToEndChaos: 'http://chaos' });
   });
 
+  test('create order when factory is unreachable', async () => {
+    jest.spyOn(global, 'fetch').mockRejectedValue(new Error('factory down'));
+
+    const res = await request(app).post('/api/order').set('Authorization', `Bearer ${dinerToken}`).send(orderRequest());
+    expect(res.status).toBe(500);
+    expect(res.body.message).toBe('factory down');
+  });
+
   test('create order with unknown menu item', async () => {
     const fetchSpy = mockFactory(true, {});
     const order = { ...orderRequest(), items: [{ menuId: 999999999, description: 'ghost', price: 1 }] };
